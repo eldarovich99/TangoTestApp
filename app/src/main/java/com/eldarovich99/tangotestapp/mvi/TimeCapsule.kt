@@ -14,6 +14,7 @@ class TimeTravelCapsule<S : UiState>(
 
     override fun addState(state: S) {
         states.add(state)
+        println("TimeCapsule: $state")
     }
 
     override fun selectState(position: Int) {

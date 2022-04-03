@@ -1,41 +1,61 @@
 package com.eldarovich99.tangotestapp.ui
 
-import androidx.lifecycle.ViewModel
 import com.eldarovich99.tangotestapp.data.ProductRepository
-import com.eldarovich99.tangotestapp.data.model.ProductNetworkModelItem
-import com.jakewharton.rxrelay2.BehaviorRelay
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.addTo
-import io.reactivex.rxkotlin.subscribeBy
-import io.reactivex.schedulers.Schedulers
+import com.eldarovich99.tangotestapp.mvi.BaseViewModel
+import com.eldarovich99.tangotestapp.mvi.Reducer
+import com.eldarovich99.tangotestapp.mvi.UiEvent
+import com.eldarovich99.tangotestapp.mvi.UiState
+import com.eldarovich99.tangotestapp.ui.mapper.ProductUiModelMapper
+import com.eldarovich99.tangotestapp.ui.model.ProductUiModel
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import java.lang.Exception
 
-class ProductViewModel: ViewModel() {
-    private val compositeDisposable = CompositeDisposable()
+class ProductViewModel : BaseViewModel<ProductState, ProductEvent>() {
     private val repository = ProductRepository()
-    private val productsSubject = BehaviorRelay.create<List<ProductNetworkModelItem>>()
-    private val searchSubject = BehaviorRelay.create<String>()
-    private val loadingSubject = BehaviorRelay.create<Boolean>()
-    private val errorSubject = BehaviorRelay.create<String>()
+    private val reducer = ProductReducer(ProductState.default())
+    private val productMapper = ProductUiModelMapper
+
+    override val state: StateFlow<ProductState>
+        get() = reducer.state
 
     init {
         loadProducts()
     }
 
     private fun loadProducts() {
-        repository.retreiveProducts().subscribeOn(
-            Schedulers.io()
-        ).subscribeBy(
-            onSuccess = {
-
-            },
-            onError = {
-
+        reducer.sendEvent(ProductEvent.Loading)
+        dataScope.launch {
+            try {
+                val products = repository.loadProducts().map(productMapper::map)
+                reducer.sendEvent(ProductEvent.Loaded(products))
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        ).addTo(compositeDisposable)
+        }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        compositeDisposable.clear()
+    private class ProductReducer(initialValue: ProductState) :
+        Reducer<ProductState, ProductEvent>(initialValue) {
+        override fun reduce(oldState: ProductState, event: ProductEvent) {
+            when (event) {
+                is ProductEvent.Loaded -> setState(ProductState.Success(event.data))
+                is ProductEvent.Loading -> setState(ProductState.Loading)
+            }
+        }
     }
+}
+
+sealed class ProductState : UiState {
+    class Success(val data: List<ProductUiModel>) : ProductState()
+    object Loading : ProductState()
+
+    companion object {
+        fun default() = Loading
+    }
+}
+
+sealed class ProductEvent : UiEvent {
+    class Loaded (val data: List<ProductUiModel>): ProductEvent()
+    object Loading: ProductEvent()
 }

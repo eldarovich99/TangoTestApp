@@ -1,6 +1,5 @@
 package com.eldarovich99.tangotestapp.data
 
-import com.jakewharton.retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -38,7 +37,7 @@ object RetrofitService {
     private fun provideRetrofitClient(okHttpClient: OkHttpClient, baseUrl: String) =
         Retrofit.Builder().baseUrl(baseUrl)
             .addConverterFactory(jsonConverterFactory)
-            .addCallAdapterFactory(RxJava2CallAdapterFactory.create()).client(okHttpClient)
+            .client(okHttpClient)
             .build()
 }
 
